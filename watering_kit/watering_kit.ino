@@ -2,8 +2,6 @@
 #include "U8glib.h"
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE);    // I2C
 #include "Wire.h"
-#include "RTClib.h"
-RTC_DS1307 RTC;
 
 // set all moisture sensors PIN ID
 int moisture1 = A0;
@@ -18,6 +16,7 @@ int moisture3_value = 0;
 int moisture4_value = 0; // Water tank
 
 int watering_magic_number = 30;
+int water_tank_save_level = 20;
 
 // set water relays
 int relay1 = 6;
@@ -46,24 +45,6 @@ int relay3_state_flag = 0;
 //relay4 state   1:open   0:close
 int relay4_state_flag = 0;
 
-static unsigned long currentMillis_send = 0;
-static unsigned long  Lasttime_send = 0;
-
-char daysOfTheWeek[7][12] = {"Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat",};
-unsigned long nowtime;
-unsigned long endtime;
-unsigned long nowtimeNext;
-unsigned long nowtime1;
-unsigned long endtime1;
-unsigned long nowtimeNext1;
-unsigned long nowtime2;
-unsigned long endtime2;
-unsigned long nowtimeNext2;
-unsigned long nowtime3;
-unsigned long endtime3;
-unsigned long nowtimeNext3;
-
-
 // good flower
 unsigned char bitmap_good[] U8G_PROGMEM = {
 
@@ -89,7 +70,6 @@ unsigned char bitmap_bad[] U8G_PROGMEM = {
   0x00, 0xF0, 0x03, 0x00, 0x00, 0xE0, 0x00, 0x00
 };
 
-
 static unsigned char bitmap_T[] U8G_PROGMEM = {
   0xF7, 0x01, 0x1D, 0x03, 0x0B, 0x02, 0x0C, 0x02, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x08, 0x02,
   0x18, 0x03, 0xF0, 0x01
@@ -105,10 +85,8 @@ static unsigned char bitmap_H[] U8G_PROGMEM = {
 
 void setup()
 {
-  draw_elecrow();
   delay(2000);
   Wire.begin();
-  RTC.begin();
   Serial.begin(9600);
   // declare relay as output
   pinMode(relay1, OUTPUT);
@@ -145,8 +123,7 @@ void loop()
     u8g.firstPage();
     do
     {
-      drawtime();
-      u8g.drawStr(8, 55 , "by der Weisse Fuchs");
+      u8g.drawStr(8, 55 , "by Weisse Fuchs");
     } while (u8g.nextPage());
   }
 }
@@ -191,15 +168,6 @@ void water_flower()
 {
   // relay4 should de always off as maisture4_value sensor is used to measure main pupm water tank
   digitalWrite(relay4, LOW);
-//  DEBUGGING =>
-//  Serial.print("Water Source: ");
-//  Serial.println(relay4_state_flag);
-//  Serial.print("First");
-//  Serial.println(moisture1_value);
-//  Serial.print("Second");
-//  Serial.println(moisture2_value);
-//  Serial.print("third");
-//  Serial.println(moisture3_value);
 
   if (relay4_state_flag == 1)
   {
@@ -279,14 +247,14 @@ void water_flower()
   }
   }
   
-  if (moisture4_value < 20) 
+  if (moisture4_value < water_tank_save_level) 
   {
     digitalWrite(pump, LOW);
     pump_state_flag = 0;
     delay(50);
     relay4_state_flag = 0;
   }
-  else if (moisture4_value >= 20)
+  else if (moisture4_value >= water_tank_save_level)
   {
     relay4_state_flag = 1;
     delay(50);
@@ -300,62 +268,6 @@ void water_flower()
       pump_state_flag = 1;
       delay(50);
     }
-  }
-}
-
-  void draw_elecrow(void){
-
-  u8g.setFont(u8g_font_gdr9r);
-  u8g.drawStr(8,55 , "by der Weisse Fuchs");
-  }
-
-void drawtime(void)
-{
-  int x = 5;
-  float i = 25.00;
-  float j = 54;
-  DateTime now = RTC.now();
-  //Serial.print(now.year(), DEC);
-  if (! RTC.isrunning())
-  {
-    u8g.setFont(u8g_font_6x10);
-    u8g.setPrintPos(5, 20);
-    u8g.print("RTC is NOT running!");
-    RTC.adjust(DateTime(__DATE__, __TIME__));
-  }
-  else
-  {
-    u8g.setFont(u8g_font_7x13);
-    u8g.setPrintPos(x, 11);
-    u8g.print(now.year(), DEC);
-    u8g.setPrintPos(x + 80, 11);
-    u8g.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    u8g.setPrintPos(x + 28, 11);
-    u8g.print("/");
-    u8g.setPrintPos(x + 33, 11);
-    u8g.print(now.month(), DEC);
-    if (now.month() < 10)
-      x -= 7;
-    u8g.setPrintPos(x + 47, 11);
-    u8g.print("/");
-    u8g.setPrintPos(x + 53, 11);
-    u8g.print(now.day(), DEC);
-    u8g.setFont(u8g_font_8x13);
-    int x = 35;
-    u8g.setPrintPos(x, 33);
-    u8g.print(now.hour(), DEC);
-    if (now.hour() < 10)
-      x -= 7;
-    u8g.setPrintPos(x + 15, 33);
-    u8g.print(":");
-    u8g.setPrintPos(x + 21, 33);
-    u8g.print(now.minute(), DEC);
-    if (now.minute() < 10)
-      x -= 7;
-    u8g.setPrintPos(x + 36, 33);
-    u8g.print(":");
-    u8g.setPrintPos(x + 42, 33);
-    u8g.print(now.second(), DEC);
   }
 }
 
